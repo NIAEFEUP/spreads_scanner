@@ -32,6 +32,8 @@ class HomePageState extends State<HomePage> {
   sheets.CellData? upCell;
   sheets.CellData? checkCell;
 
+  var loadingSpreadSheet = false;
+
   @override
   void initState() {
     super.initState();
@@ -77,13 +79,20 @@ class HomePageState extends State<HomePage> {
         return StatefulBuilder(
           builder: (BuildContext ctx, StateSetter setInsideState) {
             return AlertDialog(
+              contentPadding: const EdgeInsets.all(15),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(25),
+              ),
               content: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: <Widget>[
                   TextField(
                     controller: searchController,
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       labelText: 'Procurar Spreadsheet',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(15),
+                      ),
                     ),
                     onChanged: (value) {
                       if (value.isNotEmpty) {
@@ -113,11 +122,15 @@ class HomePageState extends State<HomePage> {
                                       : 'Desconhecido';
 
                                   return ListTile(
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(15),
+                                    ),
                                     title: Text(file.name ?? 'Sem Nome'),
                                     subtitle:
                                         Text('Criado em: $creationDateText'),
                                     onTap: () async {
                                       Navigator.of(context).pop();
+                                      setState(() => loadingSpreadSheet = true);
                                       final spread =
                                           await sheetsApi!.spreadsheets.get(
                                         file.id!,
@@ -126,6 +139,7 @@ class HomePageState extends State<HomePage> {
                                       setState(() {
                                         selectedSheet = null;
                                         selectedSpreadSheet = spread;
+                                        loadingSpreadSheet = false;
                                       });
                                     },
                                   );
@@ -133,7 +147,7 @@ class HomePageState extends State<HomePage> {
                               ),
                             )
                           : const Padding(
-                              padding: EdgeInsets.all(16),
+                              padding: EdgeInsets.all(15),
                               child: Text('Sem resultados'),
                             ),
                 ],
@@ -184,20 +198,57 @@ class HomePageState extends State<HomePage> {
               ),
             const SizedBox(height: 16),
 
-            //TODO: (Change This when there is a file)
+            if (loadingSpreadSheet) const CircularProgressIndicator(),
+
             if (_googleSignIn.currentUser != null &&
                 driveApi != null &&
-                sheetsApi != null)
+                sheetsApi != null &&
+                !loadingSpreadSheet &&
+                selectedSpreadSheet == null)
               ElevatedButton(
                 onPressed: openDialog,
-                child: const Text('Procurar Ficheiro'),
+                child: const Text('Selecionar Spread'),
               ),
+
+            // Displat the name of the spread with a button to delete it
+            if (selectedSpreadSheet != null)
+              Container(
+                  padding: const EdgeInsets.fromLTRB(10, 3, 3, 3),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.secondary,
+                    borderRadius: BorderRadius.circular(5),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.file_present),
+                      const SizedBox(width: 5),
+                      Text(
+                          selectedSpreadSheet!.properties!.title ??
+                              'Sem Título',
+                          style: const TextStyle(
+                              fontSize: 17, fontWeight: FontWeight.w500)),
+                      const SizedBox(width: 1),
+                      IconButton(
+                        icon: const Icon(Icons.close),
+                        onPressed: () {
+                          setState(() {
+                            selectedSpreadSheet = null;
+                            selectedSheet = null;
+                            upCell = null;
+                            checkCell = null;
+                          });
+                        },
+                      ),
+                    ],
+                  )),
             if (selectedSpreadSheet != null)
               Column(children: <Widget>[
                 const SizedBox(height: 10),
                 Text("Folha da Spread",
                     style: Theme.of(context).primaryTextTheme.bodyMedium),
                 Container(
+                    constraints: const BoxConstraints(maxWidth: 250),
                     margin: const EdgeInsets.symmetric(vertical: 2),
                     padding:
                         const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
@@ -206,13 +257,19 @@ class HomePageState extends State<HomePage> {
                       borderRadius: BorderRadius.circular(5),
                     ),
                     child: DropdownButton<sheets.Sheet>(
+                      underline: Container(),
                       focusColor: Theme.of(context).colorScheme.secondary,
                       value: selectedSheet,
                       items: selectedSpreadSheet!.sheets!
                           .map((sheet) => DropdownMenuItem(
                                 value: sheet,
-                                child: Text(
-                                    sheet.properties!.title ?? 'Sem Título'),
+                                child: Container(
+                                    constraints:
+                                        const BoxConstraints(maxWidth: 200),
+                                    child: Text(
+                                      sheet.properties!.title ?? 'Sem Título',
+                                      overflow: TextOverflow.ellipsis,
+                                    )),
                               ))
                           .toList(),
                       onChanged: (sheet) {
@@ -228,6 +285,7 @@ class HomePageState extends State<HomePage> {
                 Text("Coluna Identificação",
                     style: Theme.of(context).primaryTextTheme.bodyMedium),
                 Container(
+                  constraints: const BoxConstraints(maxWidth: 250),
                   margin: const EdgeInsets.symmetric(vertical: 2),
                   padding:
                       const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
@@ -236,12 +294,20 @@ class HomePageState extends State<HomePage> {
                     borderRadius: BorderRadius.circular(5),
                   ),
                   child: DropdownButton<sheets.CellData>(
+                    underline: Container(),
                     value: upCell,
                     items: selectedSheet!.data!.first.rowData!.first.values!
-                        .map((data) => DropdownMenuItem(
+                        .map(
+                          (data) => DropdownMenuItem(
                               value: data,
-                              child: Text(data.formattedValue ?? 'Sem Título'),
-                            ))
+                              child: Container(
+                                  constraints:
+                                      const BoxConstraints(maxWidth: 200),
+                                  child: Text(
+                                    data.formattedValue ?? 'Sem Título',
+                                    overflow: TextOverflow.ellipsis,
+                                  ))),
+                        )
                         .toList(),
                     onChanged: (data) {
                       setState(() {
@@ -260,6 +326,7 @@ class HomePageState extends State<HomePage> {
                 Text("Coluna Check-in",
                     style: Theme.of(context).primaryTextTheme.bodyMedium),
                 Container(
+                    constraints: const BoxConstraints(maxWidth: 250),
                     margin: const EdgeInsets.symmetric(vertical: 2),
                     padding:
                         const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
@@ -268,12 +335,18 @@ class HomePageState extends State<HomePage> {
                       borderRadius: BorderRadius.circular(5),
                     ),
                     child: DropdownButton<sheets.CellData>(
+                      underline: Container(),
                       value: checkCell,
                       items: selectedSheet!.data!.first.rowData!.first.values!
                           .map((data) => DropdownMenuItem(
                                 value: data,
-                                child:
-                                    Text(data.formattedValue ?? 'Sem Título'),
+                                child: Container(
+                                    constraints:
+                                        const BoxConstraints(maxWidth: 200),
+                                    child: Text(
+                                      data.formattedValue ?? 'Sem Título',
+                                      overflow: TextOverflow.ellipsis,
+                                    )),
                               ))
                           .toList(),
                       onChanged: (data) {

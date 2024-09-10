@@ -27,13 +27,6 @@ class QRCodeScannerPageState extends State<QRCodeScannerPage> {
   final GlobalKey qrKey = GlobalKey(debugLabel: 'QR');
   late QRViewController controller;
 
-  //TODO: Remove this code here
-  @override
-  void initState() {
-    super.initState();
-    _searchInSpreadsheet('202305089');
-  }
-
   @override
   void dispose() {
     controller.dispose();
