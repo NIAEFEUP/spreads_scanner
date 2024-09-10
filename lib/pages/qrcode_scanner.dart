@@ -1,14 +1,23 @@
 import 'package:flutter/material.dart';
 import 'package:qr_code_scanner/qr_code_scanner.dart';
-import 'package:googleapis/drive/v3.dart' as drive;
 import 'package:googleapis/sheets/v4.dart' as sheets;
-import 'package:googleapis_auth/auth_io.dart' as auth;
 import 'package:jantar_de_curso_scanner/pages/result.dart';
 
-import 'package:intl/intl.dart';
-
 class QRCodeScannerPage extends StatefulWidget {
-  const QRCodeScannerPage({Key? key}) : super(key: key);
+  sheets.SheetsApi sheetsApi;
+  String spreadsheetId;
+  String sheetName;
+  sheets.CellData upCell;
+  sheets.CellData checkCell;
+
+  QRCodeScannerPage(
+      {required this.sheetsApi,
+      required this.spreadsheetId,
+      required this.sheetName,
+      required this.upCell,
+      required this.checkCell,
+      Key? key})
+      : super(key: key);
 
   @override
   QRCodeScannerPageState createState() => QRCodeScannerPageState();
@@ -17,6 +26,13 @@ class QRCodeScannerPage extends StatefulWidget {
 class QRCodeScannerPageState extends State<QRCodeScannerPage> {
   final GlobalKey qrKey = GlobalKey(debugLabel: 'QR');
   late QRViewController controller;
+
+  //TODO: Remove this code here
+  @override
+  void initState() {
+    super.initState();
+    _searchInSpreadsheet('202305089');
+  }
 
   @override
   void dispose() {
@@ -37,131 +53,76 @@ class QRCodeScannerPageState extends State<QRCodeScannerPage> {
     });
   }
 
-  String convertToDateTime(double numericalValue) {
-    // Extract integer and fractional parts
-    int daysSinceEpoch = numericalValue.floor();
-    double fractionalPart = numericalValue - daysSinceEpoch;
-
-    // Calculate the time
-    int totalSeconds = (fractionalPart * 24 * 3600).round();
-    int hours = totalSeconds ~/ 3600;
-    int minutes = (totalSeconds % 3600) ~/ 60;
-    int seconds = totalSeconds % 60;
-
-    String formattedTime = '${hours.toString().padLeft(2, '0')}:'
-        '${minutes.toString().padLeft(2, '0')}:'
-        '${seconds.toString().padLeft(2, '0')}';
-
-    // Return the combined date and time
-    return formattedTime;
-  }
-
-  Future<void> _searchInSpreadsheet(String up_number) async {
+  Future<void> _searchInSpreadsheet(String value) async {
     try {
-      final creds = auth.ServiceAccountCredentials.fromJson({});
+      final sheetsApi = widget.sheetsApi;
+      final spreadsheetId = widget.spreadsheetId;
+      final sheetName = widget.sheetName;
 
-      // Create an authenticated client
-      final client = await auth.clientViaServiceAccount(creds,
-          [drive.DriveApi.driveFileScope, sheets.SheetsApi.spreadsheetsScope]);
+      final response =
+          await sheetsApi.spreadsheets.values.get(spreadsheetId, sheetName);
 
-      // Initialize Sheets API
-      final sheetsApi = sheets.SheetsApi(client);
+      if (response.values == null || response.values!.isEmpty) {
+        return;
+      }
 
-      // Spreadsheet ID of the specific spreadsheet you want to interact with
-      const String spreadsheetId = "";
+      final header = response.values?.first;
+      if (header == null) return;
 
-      final response = await sheetsApi.spreadsheets.values.get(
-          spreadsheetId, "Confirmados",
-          valueRenderOption: 'UNFORMATTED_VALUE');
+      final upColumnIndex = header.indexOf(widget.upCell.formattedValue);
+      final entryIndex = header.indexOf(widget.checkCell.formattedValue);
 
-      // Process the response
-      if (response.values != null) {
-        // Extract the values from the response
-        final values = response.values;
+      List<Object?>? foundRow;
+      for (var row in response.values!) {
+        final upCellValue = row[upColumnIndex];
 
-        // Find the index of the column named "UP"
-        final headerRow = values?.first;
-        if (headerRow == null) return;
-        final upColumnIndex = headerRow.indexOf('Número UP');
-        final entryIndex = headerRow.indexOf('Entrada');
-
-        // Search for the row where the value of the "UP" column matches the specified value
-        List<dynamic>? targetRow;
-        for (final row in values!.skip(1)) {
-          if (row.length > upColumnIndex &&
-              row[upColumnIndex].toString() == up_number) {
-            targetRow = row;
-            if (row.length >= entryIndex + 1 &&
-                targetRow[entryIndex] is double) {
-              targetRow[entryIndex] = convertToDateTime(targetRow[entryIndex]);
-              Navigator.pop(context);
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                    builder: (context) => ResultPage(
-                        found: true,
-                        scanned: up_number,
-                        header: headerRow,
-                        data: targetRow,
-                        alreadyEnter: true)),
-              );
-              return;
-            }
-            break;
-          }
-        }
-
-        if (targetRow != null) {
-          final now = DateTime.now();
-          final formattedDateTime = now.toString();
-
-          targetRow.add(formattedDateTime);
-
-          final value = sheets.ValueRange(values: [
-            [formattedDateTime]
-          ]);
-
-          final rowIndex = values.indexOf(targetRow) + 1;
-          final lastColumn = headerRow.length;
-          final column = String.fromCharCode(65 + lastColumn - 1);
-          final range = 'Confirmados!$column$rowIndex:$column$rowIndex';
-
-          await sheetsApi.spreadsheets.values.update(
-              value, spreadsheetId, range,
-              valueInputOption: 'USER_ENTERED');
-
-          targetRow.last = DateFormat('HH:mm:ss').format(now);
-
-          Navigator.pop(context);
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-                builder: (context) => ResultPage(
-                    found: true,
-                    scanned: up_number,
-                    header: headerRow,
-                    data: targetRow)),
-          );
-        } else {
-          Navigator.pop(context);
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-                builder: (context) =>
-                    ResultPage(found: false, scanned: up_number)),
-          );
+        if (upCellValue == value) {
+          foundRow = row;
         }
       }
-    } catch (error) {
-      print('Error requesting spreadsheet file: $error');
+
+      var alreadyChecked = false;
+      if (foundRow != null && entryIndex < foundRow.length) {
+        alreadyChecked =
+            foundRow[entryIndex] != null && foundRow[entryIndex] != '';
+      }
+      if (!alreadyChecked && foundRow != null) {
+        final now = DateTime.now();
+        final formattedDateTime = now.toString();
+
+        final value = sheets.ValueRange(values: [
+          [formattedDateTime]
+        ]);
+
+        final rowIndex = response.values!.indexOf(foundRow) + 1;
+        final column = String.fromCharCode(65 + entryIndex);
+        final range = '$sheetName!$column$rowIndex:$column$rowIndex';
+
+        await sheetsApi.spreadsheets.values.update(value, spreadsheetId, range,
+            valueInputOption: 'USER_ENTERED');
+      }
+
+      Navigator.pop(context);
+      Navigator.push(
+          context,
+          MaterialPageRoute(
+              builder: (context) => ResultPage(
+                  found: foundRow != null,
+                  scanned: value,
+                  header: header,
+                  data: foundRow,
+                  alreadyChecked: alreadyChecked)));
+    } catch (e) {
+      print('Error searching in spreadsheet: $e');
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color.fromARGB(255, 27, 32, 39),
       appBar: AppBar(
-        title: const Text('Scan QR Code'),
+        title: const Text('Ler QRCode'),
       ),
       body: QRView(
         key: qrKey,
