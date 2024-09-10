@@ -14,3 +14,9 @@ A few resources to get you started if this is your first Flutter project:
 For help getting started with Flutter development, view the
 [online documentation](https://docs.flutter.dev/), which offers tutorials,
 samples, guidance on mobile development, and a full API reference.
+
+## setuping
+
+1. Setup a google console application with Drive API and Sheets API
+2. Setup a firebase application
+   2.1 Add Flutter App
