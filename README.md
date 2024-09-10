@@ -1,22 +1,29 @@
-# validation_scanner
+![Logo](https://dev-to-uploads.s3.amazonaws.com/uploads/articles/th5xamgrr6se0x5ro4g6.png)
 
-A new Flutter project.
+# Spreads Validator
 
-## Getting Started
+An app to validate people check-in.
+It scans a qrcode of the participant identification and check for it existence in a specific Google SpreadSheet.
 
-This project is a starting point for a Flutter application.
+## App Flow
 
-A few resources to get you started if this is your first Flutter project:
+- Login with your Google Account
+- Search the Spread to use in your Google Drive
+- Specify the sheet and columns
+- Validate scanning the qrcode
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+## Screenshots
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+<div>
+<img src="./images/1.jpeg" width="200">
+<img src="./images/2.jpeg" width="200">
+<img src="./images/3.jpeg" width="200">
+<img src="./images/4.jpeg" width="200">
+</div>
 
-## setuping
+## Roadmap
 
-1. Setup a google console application with Drive API and Sheets API
-2. Setup a firebase application
-   2.1 Add Flutter App
+- Icons and branding
+- IOS support
+- Login in Sigarra to display Student photo
+- Local Storage to remember the selected spreadsheet, sheet and columns.
