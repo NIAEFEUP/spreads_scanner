@@ -1,16 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:logger/logger.dart';
 import 'package:qr_code_scanner/qr_code_scanner.dart';
 import 'package:googleapis/sheets/v4.dart' as sheets;
 import 'package:jantar_de_curso_scanner/pages/result.dart';
 
 class QRCodeScannerPage extends StatefulWidget {
-  sheets.SheetsApi sheetsApi;
-  String spreadsheetId;
-  String sheetName;
-  sheets.CellData upCell;
-  sheets.CellData checkCell;
+  final sheets.SheetsApi sheetsApi;
+  final String spreadsheetId;
+  final String sheetName;
+  final sheets.CellData upCell;
+  final sheets.CellData checkCell;
 
-  QRCodeScannerPage(
+  const QRCodeScannerPage(
       {required this.sheetsApi,
       required this.spreadsheetId,
       required this.sheetName,
@@ -41,7 +42,7 @@ class QRCodeScannerPageState extends State<QRCodeScannerPage> {
         controller.dispose();
         await _searchInSpreadsheet(scanData.code!);
       } catch (error) {
-        print('Error scanning QR code: $error');
+        Logger().d('Error scanning QR code: $error');
       }
     });
   }
