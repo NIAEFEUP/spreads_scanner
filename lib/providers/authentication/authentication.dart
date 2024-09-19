@@ -10,7 +10,7 @@ class AuthenticationProvider extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider(
-      create: (_) => AuthenticationNotifier(),
+      create: (context) => AuthenticationNotifier(context),
       child: child,
     );
   }
