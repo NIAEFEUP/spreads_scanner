@@ -24,7 +24,7 @@ if (flutterVersionName == null) {
 }
 
 android {
-    namespace "pt.niaefeup.validation_scanner"
+    namespace "pt.niaefeup.validation-scanner"
     compileSdkVersion flutter.compileSdkVersion
     ndkVersion flutter.ndkVersion
 
